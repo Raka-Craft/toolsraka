@@ -1,0 +1,412 @@
+/* ============ CORE ============ */
+const $=id=>document.getElementById(id);
+const grid=$('grid'),pills=$('pills');
+CATS.forEach(([v,l],i)=>{
+ const b=document.createElement('button');
+ b.className='pill'+(i===0?' active':'');b.textContent=l;b.dataset.cat=v;
+ b.onclick=()=>{document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));b.classList.add('active');render(v);};
+ pills.appendChild(b);
+});
+function render(cat){
+ grid.innerHTML='';
+ const list=TOOLS.filter(t=>cat==='all'||t.c===cat);
+ $('secTitle').textContent=cat==='all'?'Semua Tools':CATS.find(c=>c[0]===cat)[1
+];
+ $('toolCount').textContent=list.length+' tools • Semua gratis!';
+ list.forEach(t=>{
+  const d=document.createElement('div');d.className='card';
+  d.innerHTML=`<div class="ic" style="background:${t.bg}">${t.icon}</div><h3>${t.n}</h3><p>${t.d}</p><div class="tags">${t.tags.map(x=>`<span class="tag ${x==='GRATIS'?'free':'cat'}">${x}</span>`).join('')}</div><span class="arr">→</span>`;
+  d.onclick=()=>openTool(t);grid.appendChild(d);
+ });
+}
+function openTool(t){
+ if(t.ext){window.open(t.url,'_blank');return;}
+ $('tvTitle').textContent=t.icon+' '+t.n;
+ $('tvBody').innerHTML='';
+ TOOLFN[t.fn]($('tvBody'));
+ $('toolview').classList.add('show');window.scrollTo(0,0);
+ $('toolview').scrollTop=0;
+}
+function closeTool(){$('toolview').classList.remove('show');}
+function el(html){const d=document.createElement('div');d.innerHTML=html;return d;}
+function outBox(cls){const d=document.createElement('div');d.className='tout '+(cls||'');return d;}
+/* Status */
+try{fetch('https://ipwho.is/').then(r=>r.json()).then(j=>{$('stCountry').textContent=j.country||'Unknown';}).catch(()=>{$('stCountry').textContent='Indonesia';});}catch(e){$('stCountry').textContent='Indonesia';}
+(()=>{const ua=navigator.userAgent;$('stDevice').textContent=/Android/i.test(ua)?'Android':/iPhone|iPad/i.test(ua)?'iOS':'Desktop';$('stBrowser').textContent=/Chrome/i.test(ua)?'Chrome':/Firefox/i.test(ua)?'Firefox':/Safari/i.test(ua)?'Safari':'Browser';})();
+/* Modal */
+const MODALS={about:{t:"About Dev",d:"Tools Raka dibuat 100% oleh Raka. Kumpulan tools terbaik — AI, bypass, security — semua gratis tanpa VIP!"},
+bug:{t:"Report Bug",d:"Ketemu bug? Kasih tau Raka: tool apa, apa yang terjadi, + screenshot kalau ada. Pasti dibenerin!"},
+wa:{t:"Saluran WhatsApp",d:"Gabung saluran WhatsApp Raka buat update tools terbaru!",btn:"Gabung ke Saluran"}};
+function openModal(k){const m=MODALS[k];$('mbox').innerHTML=`<h3>${m.t}</h3><p>${m.d}</p>${m.btn?`<button class="mbtn2" onclick="closeModal()">${m.btn}</button><br>`:''}<button class="mclose" onclick="closeModal()">Tutup</button>`;$('modal').classList.add('show');}
+function closeModal(){$('modal').classList.remove('show');}
+$('modal').onclick=e=>{if(e.target.id==='modal')closeModal();};
+let _mut=true;$('muteBtn').onclick=function(){_mut=!_mut;this.textContent=_mut?'🔇':'🔊';};
+render('all');
+
+/* ============ TOOLS ============ */
+const TOOLFN={};
+/* --- Tanya AI (pollinations) --- */
+TOOLFN.tanyaAI=box=>{
+ box.innerHTML=`<div class="chatbox" id="cb"></div>
+ <div class="trow"><input class="inp" id="ci" placeholder="Tanya apa aja..." style="flex:1;margin:0"><button class="tbtn" id="cs">Kirim</button></div>`;
+ const cb=$('cb'),ci=$('ci');
+ function addMsg(t,me){const d=document.createElement('div');d.className='msg '+(me?'me':'ai');d.textContent=t;cb.appendChild(d);cb.scrollTop=cb.scrollHeight;return d;}
+ addMsg('Halo! Aku AI Tools Raka. Tanya apa aja!','');
+ async function send(){
+  const q=ci.value.trim();if(!q)return;ci.value='';addMsg(q,true);
+  const tp=addMsg('Mengetik...','');tp.classList.add('typing');
+  try{
+   const r=await fetch('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'system',content:'Kamu asisten AI Tools Raka buatan Raka. Jawab Bahasa Indonesia, ramah, singkat.'},{role:'user',content:q}],model:'openai',private:true})});
+   const t=await r.text();tp.classList.remove('typing');tp.textContent=t.slice(0,2000)||'Maaf, coba lagi!';
+  }catch(e){tp.classList.remove('typing');tp.textContent='Gagal konek. Coba lagi!';}
+  cb.scrollTop=cb.scrollHeight;
+ }
+ $('cs').onclick=send;ci.onkeydown=e=>{if(e.key==='Enter')send();};
+};
+/* --- Text to Image --- */
+TOOLFN.txt2img=box=>{
+ box.innerHTML=`<input class="inp" id="ti" placeholder="Contoh: anime girl with purple hair"><button class="tbtn" id="tg">Generate</button><div class="qrbox" id="to"></div>`;
+ $('tg').onclick=()=>{
+  const p=$('ti').value.trim();if(!p){$('to').innerHTML='<p style="color:var(--mut)">Isi prompt dulu!</p>';return;}
+  const s=Math.floor(Math.random()*99999);
+  $('to').innerHTML='<p style="color:var(--mut)">Generate...</p><br><img id="gi" style="opacity:.4">';
+  const img=new Image();
+  img.onload=()=>{$('to').innerHTML='';$('to').appendChild(img);};
+  img.onerror=()=>{$('to').innerHTML='<p style="color:#ef4444">Gagal. Coba lagi!</p>';};
+  img.src=`https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=512&height=512&seed=${s}&nologo=true&model=flux`;
+  img.style.maxWidth='100%';img.style.borderRadius='12px';
+ };
+};
+/* --- Kalkulator --- */
+TOOLFN.kalkulator=box=>{
+ box.innerHTML=`<div id="calcDisp">0</div><div class="calc" id="ck"></div>`;
+ const disp=$('calcDisp');let cur='0',op=null,prev=null,fresh=true;
+ const keys=['C','⌫','%','÷','7','8','9','×','4','5','6','-','1','2','3','+','0','.','='];
+ const ck=$('ck');
+ keys.forEach(k=>{
+  const b=document.createElement('button');b.textContent=k;
+  if('÷×-+'.includes(k))b.className='op';if(k==='=')b.className='eq';
+  b.onclick=()=>press(k);ck.appendChild(b);
+ });
+ function press(k){
+  if(k==='C'){cur='0';op=null;prev=null;fresh=true;}
+  else if(k==='⌫'){cur=cur.length>1?cur.slice(0,-1):'0';}
+  else if('÷×-+'.includes(k)){calc();op=k;prev=parseFloat(cur);fresh=true;}
+  else if(k==='='){calc();op=null;fresh=true;}
+  else if(k==='%'){cur=String(parseFloat(cur)/100);}
+  else{if(fresh){cur=(k==='.')?'0.':k;fresh=false;}else{if(k==='.'&&cur.includes('.'))return;cur=cur==='0'&&k!=='.'?k:cur+k;}}
+  disp.textContent=cur;
+ }
+ function calc(){
+  if(op===null||prev===null)return;
+  const a=prev,b=parseFloat(cur);let r=b;
+  if(op==='+')r=a+b;else if(op==='-')r=a-b;else if(op==='×')r=a*b;else if(op==='÷')r=b!==0?a/b:NaN;
+  cur=String(Math.round(r*1e10)/1e10);prev=null;
+ }
+};
+/* --- Password Generator --- */
+TOOLFN.passgen=box=>{
+ box.innerHTML=`<div class="trow"><label>Panjang</label><input type="range" id="pl" min="6" max="64" value="16"><b id="pv">16</b></div>
+ <div class="trow"><label><input type="checkbox" id="pc1" checked> Huruf besar</label><label><input type="checkbox" id="pc2" checked> Angka</label><label><input type="checkbox" id="pc3" checked> Simbol</label></div>
+ <button class="tbtn" id="pg">Generate</button><button class="tbtn ghost" id="pc">Copy</button><div class="tout big" id="po" style="text-align:center;font-size:18px">-</div>`;
+ const pl=$('pl');pl.oninput=()=>$('pv').textContent=pl.value;
+ function gen(){
+  let ch='abcdefghijklmnopqrstuvwxyz';
+  if($('pc1').checked)ch+='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if($('pc2').checked)ch+='0123456789';
+  if($('pc3').checked)ch+='!@#$%^&*';
+  let p='';const arr=new Uint32Array(+pl.value);crypto.getRandomValues(arr);
+  for(let i=0;i<+pl.value;i++)p+=ch[arr[i]%ch.length];
+  $('po').textContent=p;
+ }
+ $('pg').onclick=gen;gen();
+ $('pc').onclick=()=>{navigator.clipboard.writeText($('po').textContent);$('pc').textContent='Tersalin!';setTimeout(()=>$('pc').textContent='Copy',1200);};
+};
+/* --- QR Generator --- */
+TOOLFN.qrgen=box=>{
+ box.innerHTML=`<input class="inp" id="qi" placeholder="Teks atau link..."><button class="tbtn" id="qg">Generate QR</button><div class="qrbox" id="qo"></div>`;
+ $('qg').onclick=()=>{
+  const t=$('qi').value.trim();if(!t){$('qo').innerHTML='<p style="color:var(--mut)">Isi dulu!</p>';return;}
+  $('qo').innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(t)}" alt="QR">`;
+ };
+};
+/* --- Morse --- */
+const MORSE={A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..','0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',' ':'/'};
+const RMORSE={};for(const k in MORSE)RMORSE[MORSE[k]]=k;
+TOOLFN.morse=box=>{
+ box.innerHTML=`<textarea id="mi" placeholder="Tulis teks di sini..."></textarea>
+ <div><button class="tbtn" id="me">Encode → Morse</button><button class="tbtn ghost" id="md">Decode ← Teks</button></div><div class="tout" id="mo">-</div>`;
+ $('me').onclick=()=>{$('mo').textContent=$('mi').value.toUpperCase().split('').map(c=>MORSE[c]||c).join(' ');};
+ $('md').onclick=()=>{$('mo').textContent=$('mi').value.trim().split(/\s+/).map(c=>RMORSE[c]||c).join('');};
+};
+/* --- Quote --- */
+const QUOTES=["Jangan menyerah, istirahat boleh tapi berhenti jangan!","Kode yang bagus ditulis sekali, dibaca selamanya.","Sukses itu 1% inspirasi, 99% keringat.","Gagal itu biasa, yang luar biasa itu bangkit lagi.","Ngoding itu kayak puzzle, sabar pasti ketemu!","Mimpi besar, mulai dari langkah kecil.","Error itu guru terbaik programmer.","Hari ini ngoding, besok jadi pro!","Fokus satu hal sampai beres, baru lanjut.","Semua master dulu juga beginner."];
+TOOLFN.quote=box=>{
+ box.innerHTML=`<button class="tbtn" id="qg2">Kata-kata Baru</button><div class="tout big" id="qo2" style="text-align:center"></div>`;
+ function nq(){$('qo2').textContent='"'+QUOTES[Math.floor(Math.random()*QUOTES.length)]+'"';}
+ $('qg2').onclick=nq;nq();
+};
+/* --- BRAT --- */
+TOOLFN.brat=box=>{
+ box.innerHTML=`<input class="inp" id="bi" placeholder="Tulis teks brat..." maxlength="60"><button class="tbtn" id="bg">Generate</button><div class="qrbox"><canvas id="bc" width="600" height="600" style="max-width:100%;border-radius:12px"></canvas></div><br><button class="tbtn ghost" id="bd">Download</button>`;
+ function draw(){
+  const c=$('bc'),x=c.getContext('2d'),t=$('bi').value||'brat';
+  x.fillStyle='#a3e635';x.fillRect(0,0,600,600);
+  x.fillStyle='#000';x.font='bold 44px Arial';x.textAlign='center';
+  const words=t.split(' ');let lines=[],line='';
+  words.forEach(w=>{const tl=line+' '+w;if(x.measureText(tl).width>520&&line){lines.push(line);line=w;}else line=tl;});
+  lines.push(line);
+  const y0=300-(lines.length-1)*30;
+  lines.forEach((l,i)=>x.fillText(l.trim(),300,y0+i*60));
+  x.filter='blur(1px)';x.drawImage(c,0,0);x.filter='none';
+ }
+ $('bg').onclick=draw;$('bi').oninput=draw;draw();
+ $('bd').onclick=()=>{const a=document.createElement('a');a.download='brat.png';a.href=$('bc').toDataURL();a.click();};
+};
+/* --- Encrypt --- */
+TOOLFN.encrypt=box=>{
+ box.innerHTML=`<textarea id="ei" placeholder="Teks..."></textarea>
+ <select id="em"><option value="b64e">Base64 Encode</option><option value="b64d">Base64 Decode</option><option value="urle">URL Encode</option><option value="urld">URL Decode</option><option value="hexe">Hex Encode</option><option value="hexd">Hex Decode</option></select>
+ <button class="tbtn" id="eg">Proses</button><div class="tout" id="eo">-</div>`;
+ $('eg').onclick=()=>{
+  const t=$('ei').value,m=$('em').value;let r='';
+  try{
+   if(m==='b64e')r=btoa(unescape(encodeURIComponent(t)));
+   else if(m==='b64d')r=decodeURIComponent(escape(atob(t)));
+   else if(m==='urle')r=encodeURIComponent(t);
+   else if(m==='urld')r=decodeURIComponent(t);
+   else if(m==='hexe')r=[...t].map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('');
+   else if(m==='hexd')r=t.match(/../g).map(h=>String.fromCharCode(parseInt(h,16))).join('');
+  }catch(e){r='Error: input tidak valid!';}
+  $('eo').textContent=r||'-';
+ };
+};
+/* --- Fake Tweet --- */
+TOOLFN.faketweet=box=>{
+ box.innerHTML=`<input class="inp" id="fn" placeholder="Nama (cth: Raka)"><input class="inp" id="fu" placeholder="Username tanpa @ (cth: raka)"><textarea id="ft" placeholder="Isi tweet..." style="min-height:70px"></textarea>
+ <div class="trow"><label>Likes</label><input type="number" id="fl" value="1234"><label>Retweet</label><input type="number" id="fr" value="567"></div>
+ <button class="tbtn" id="fgb">Generate</button><div class="qrbox"><canvas id="fc" width="560" height="340" style="max-width:100%;border-radius:12px"></canvas></div><br><button class="tbtn ghost" id="fd">Download</button>`;
+ function draw(){
+  const c=$('fc'),x=c.getContext('2d');
+  x.fillStyle='#15202b';x.fillRect(0,0,560,340);
+  x.fillStyle='#1d9bf0';x.beginPath();x.arc(60,60,28,0,7);x.fill();
+  x.fillStyle='#fff';x.font='bold 24px Arial';x.textAlign='center';x.fillText(($('fn').value||'R')[0].toUpperCase(),60,69);
+  x.textAlign='left';x.fillStyle='#fff';x.font='bold 17px Arial';x.fillText($('fn').value||'Raka',100,52);
+  x.fillStyle='#8899a6';x.font='15px Arial';x.fillText('@'+($('fu').value||'raka'),100,74);
+  x.fillStyle='#fff';x.font='17px Arial';
+  const words=($('ft').value||'Halo ini tweet palsu!').split(' ');let line='',y=120;
+  words.forEach(w=>{if(x.measureText(line+' '+w).width>460){x.fillText(line,40,y);y+=26;line=w;}else line+=' '+w;});
+  x.fillText(line,40,y);
+  x.fillStyle='#8899a6';x.font='14px Arial';
+  x.fillText('♡ '+($('fl').value||0)+'   🔁 '+($('fr').value||0),40,300);
+ }
+ $('fgb').onclick=draw;draw();
+ $('fd').onclick=()=>{const a=document.createElement('a');a.download='faketweet.png';a.href=$('fc').toDataURL();a.click();};
+};
+/* --- Image Compressor --- */
+TOOLFN.imgcomp=box=>{
+ box.innerHTML=`<input type="file" id="fi" accept="image/*" class="inp"><div class="trow"><label>Kualitas</label><input type="range" id="fq" min="10" max="100" value="70"><b id="fv">70%</b></div><div class="qrbox" id="fo"></div>`;
+ let orig=null;
+ $('fq').oninput=()=>$('fv').textContent=$('fq').value+'%';
+ $('fi').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const img=new Image();
+  img.onload=()=>{
+   const cv=document.createElement('canvas');
+   const sc=Math.min(1,1280/img.width);
+   cv.width=img.width*sc;cv.height=img.height*sc;
+   cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+   const url=cv.toDataURL('image/jpeg',+$('fq').value/100);
+   const kb=Math.round(url.length*0.75/1024);
+   $('fo').innerHTML=`<img src="${url}" style="max-width:100%;border-radius:12px"><p style="color:var(--mut);margin:8px 0">Hasil: ~${kb} KB</p><a href="${url}" download="compressed.jpg"><button class="tbtn">Download</button></a>`;
+  };
+  img.src=URL.createObjectURL(f);
+ };
+};
+/* --- IQC Generator --- */
+TOOLFN.iqc=box=>{
+ box.innerHTML=`<input class="inp" id="qn" placeholder="Nama..."><textarea id="qt" placeholder="Quote..." style="min-height:70px"></textarea><button class="tbtn" id="qg3">Generate</button><div class="qrbox"><canvas id="qc2" width="600" height="400" style="max-width:100%;border-radius:12px"></canvas></div><br><button class="tbtn ghost" id="qd2">Download</button>`;
+ function draw(){
+  const c=$('qc2'),x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,600,400);g.addColorStop(0,'#1e1b4b');g.addColorStop(1,'#4c1d95');
+  x.fillStyle=g;x.fillRect(0,0,600,400);
+  x.fillStyle='rgba(255,255,255,.08)';x.font='200px Arial';x.textAlign='center';x.fillText('"',300,200);
+  x.fillStyle='#fff';x.font='bold 28px Arial';
+  const words=($('qt').value||'Tulis quotemu di sini').split(' ');let line='',y=180;
+  words.forEach(w=>{if(x.measureText(line+' '+w).width>480){x.fillText(line.trim(),300,y);y+=40;line=w;}else line+=' '+w;});
+  x.fillText(line.trim(),300,y);
+  x.fillStyle='#a78bfa';x.font='18px Arial';x.fillText('- '+($('qn').value||'Anonim'),300,340);
+ }
+ $('qg3').onclick=draw;$('qn').oninput=draw;$('qt').oninput=draw;draw();
+ $('qd2').onclick=()=>{const a=document.createElement('a');a.download='iqc.png';a.href=$('qc2').toDataURL();a.click();};
+};
+/* --- Sertifikat Tolol --- */
+TOOLFN.sertif=box=>{
+ box.innerHTML=`<input class="inp" id="sn" placeholder="Nama penerima..."><input class="inp" id="st2" placeholder="Judul sertifikat (cth: Raja Rebahan)"><button class="tbtn" id="sg">Generate</button><div class="qrbox"><canvas id="sc" width="700" height="500" style="max-width:100%;border-radius:12px"></canvas></div><br><button class="tbtn ghost" id="sd">Download</button>`;
+ function draw(){
+  const c=$('sc'),x=c.getContext('2d');
+  x.fillStyle='#fefce8';x.fillRect(0,0,700,500);
+  x.strokeStyle='#ca8a04';x.lineWidth=12;x.strokeRect(14,14,672,472);
+  x.strokeStyle='#facc15';x.lineWidth=4;x.strokeRect(34,34,632,432);
+  x.fillStyle='#713f12';x.textAlign='center';x.font='bold 42px Georgia';x.fillText('SERTIFIKAT',350,110);
+  x.font='20px Georgia';x.fillStyle='#92400e';x.fillText($('st2').value||'Penghargaan Tolol',350,155);
+  x.font='18px Georgia';x.fillStyle='#57534e';x.fillText('Diberikan kepada:',350,210);
+  x.font='bold 36px Georgia';x.fillStyle='#1c1917';x.fillText($('sn').value||'Nama Kamu',350,265);
+  x.font='16px Georgia';x.fillStyle='#57534e';x.fillText('Atas pencapaiannya yang luar biasa',350,320);
+  x.fillText('dalam bidang ketololan tingkat dewa',350,345);
+  x.font='14px Georgia';x.fillText('Tools Raka • '+new Date().toLocaleDateString('id-ID'),350,440);
+ }
+ $('sg').onclick=draw;$('sn').oninput=draw;$('st2').oninput=draw;draw();
+ $('sd').onclick=()=>{const a=document.createElement('a');a.download='sertifikat.png';a.href=$('sc').toDataURL();a.click();};
+};
+/* --- Fake Dana --- */
+function fakeWallet(box,app,color1,color2,appName){
+ box.innerHTML=`<input class="inp" id="wn" placeholder="Nama..."><input class="inp" id="wb" placeholder="Saldo (cth: 1.000.000)" inputmode="numeric"><button class="tbtn" id="wg">Generate</button><div class="qrbox"><canvas id="wc" width="380" height="700" style="max-width:280px;border-radius:20px"></canvas></div><br><button class="tbtn ghost" id="wd">Download</button>`;
+ function draw(){
+  const c=$('wc'),x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,380,700);g.addColorStop(0,color1);g.addColorStop(1,color2);
+  x.fillStyle=g;x.fillRect(0,0,380,700);
+  x.fillStyle='rgba(255,255,255,.95)';x.textAlign='center';
+  x.font='bold 26px Arial';x.fillText(appName,190,80);
+  x.font='15px Arial';x.fillStyle='rgba(255,255,255,.8)';x.fillText($('wn').value||'Nama Kamu',190,115);
+  x.fillStyle='#fff';x.font='bold 38px Arial';x.fillText('Rp'+($('wb').value||'0'),190,220);
+  x.font='14px Arial';x.fillStyle='rgba(255,255,255,.8)';x.fillText('Saldo Aktif',190,250);
+  x.fillStyle='rgba(255,255,255,.2)';
+  ['Kirim','Minta','Top Up','Tarik'].forEach((t,i)=>{x.beginPath();x.arc(60+i*87,340,32,0,7);x.fill();x.fillStyle='#fff';x.font='11px Arial';x.fillText(t,60+i*87,395);x.fillStyle='rgba(255,255,255,.2)';});
+  x.fillStyle='rgba(0,0,0,.25)';x.font='12px Arial';x.fillText('Screenshot palsu buat lucu-lucuan',190,660);
+ }
+ $('wg').onclick=draw;$('wn').oninput=draw;$('wb').oninput=draw;draw();
+ $('wd').onclick=()=>{const a=document.createElement('a');a.download=app+'.png';a.href=$('wc').toDataURL();a.click();};
+}
+TOOLFN.fakedana=box=>fakeWallet(box,'dana','#0ea5e9','#0369a1','DANA');
+TOOLFN.fakeovo=box=>fakeWallet(box,'ovo','#8b5cf6','#5b21b6','OVO');
+/* --- Tanya Ustadz (AI) --- */
+TOOLFN.ustadz=box=>{
+ box.innerHTML=`<div class="chatbox" id="uc"></div><div class="trow"><input class="inp" id="ui" placeholder="Tanya soal agama..." style="flex:1;margin:0"><button class="tbtn" id="us">Kirim</button></div>`;
+ const cb=$('uc'),ci=$('ui');
+ function am(t,me){const d=document.createElement('div');d.className='msg '+(me?'me':'ai');d.textContent=t;cb.appendChild(d);cb.scrollTop=cb.scrollHeight;return d;}
+ am('Assalamualaikum! Tanya soal agama, insyaAllah dijawab.','');
+ async function send(){
+  const q=ci.value.trim();if(!q)return;ci.value='';am(q,true);
+  const tp=am('Mengetik...','');tp.classList.add('typing');
+  try{
+   const r=await fetch('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'system',content:'Kamu asisten Islami Tools Raka. Jawab pertanyaan agama Islam dengan sopan, akurat, sertakan dalil jika bisa. Bahasa Indonesia.'},{role:'user',content:q}],model:'openai',private:true})});
+   tp.classList.remove('typing');tp.textContent=(await r.text()).slice(0,2000)||'Maaf, coba lagi!';
+  }catch(e){tp.classList.remove('typing');tp.textContent='Gagal konek. Coba lagi!';}
+  cb.scrollTop=cb.scrollHeight;
+ }
+ $('us').onclick=send;ci.onkeydown=e=>{if(e.key==='Enter')send();};
+};
+/* --- Cari Fakta (AI) --- */
+TOOLFN.fakta=box=>{
+ box.innerHTML=`<input class="inp" id="fki" placeholder="Cari fakta tentang..."><button class="tbtn" id="fks">Cari</button><div class="tout big" id="fko">Hasil akan muncul di sini...</div>`;
+ $('fks').onclick=async()=>{
+  const q=$('fki').value.trim();if(!q)return;
+  $('fko').textContent='Mencari...';
+  try{
+   const r=await fetch('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'system',content:'Kamu pemeriksa fakta Tools Raka. Berikan fakta akurat dan terverifikasi. Bahasa Indonesia, to the point.'},{role:'user',content:'Fakta tentang: '+q}],model:'openai',private:true})});
+   $('fko').textContent=(await r.text()).slice(0,2000)||'Tidak ketemu. Coba kata lain!';
+  }catch(e){$('fko').textContent='Gagal konek. Coba lagi!';}
+ };
+};
+/* --- GDrive Direct Link --- */
+TOOLFN.gdrive=box=>{
+ box.innerHTML=`<input class="inp" id="gdi" placeholder="Tempel link Google Drive..."><button class="tbtn" id="gdg">Ubah</button><div class="tout" id="gdo">-</div><button class="tbtn ghost" id="gdc" style="display:none">Copy</button>`;
+ $('gdg').onclick=()=>{
+  const u=$('gdi').value.trim();
+  const m=u.match(/\/d\/([a-zA-Z0-9_-]+)/)||u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if(!m){$('gdo').textContent='Link tidak valid!';$('gdc').style.display='none';return;}
+  const dl='https://drive.google.com/uc?export=download&id='+m[1];
+  $('gdo').textContent=dl;$('gdc').style.display='';
+  $('gdc').onclick=()=>{navigator.clipboard.writeText(dl);$('gdc').textContent='Tersalin!';setTimeout(()=>$('gdc').textContent='Copy',1200);};
+ };
+};
+/* --- Prompt Generator --- */
+const PROMPTS=["Foto sinematik {X}, pencahayaan dramatis, detail ultra, 8k","Anime {X} gaya studio ghibli, warna pastel lembut","Logo minimalis {X}, vektor flat, background putih","Poster film {X}, gaya hollywood blockbuster","Ilustrasi {X}, vaporwave neon aesthetic","3D render {X}, octane render, studio lighting"];
+TOOLFN.promptgen=box=>{
+ box.innerHTML=`<input class="inp" id="pgi" placeholder="Ide kamu (cth: kucing astronot)"><button class="tbtn" id="pgg">Generate Prompt</button><div class="tout big" id="pgo">-</div>`;
+ $('pgg').onclick=()=>{
+  const x=$('pgi').value.trim()||'sesuatu yang keren';
+  $('pgo').textContent=PROMPTS.map(p=>'- '+p.replace('{X}',x)).join('\n');
+ };
+};
+/* --- Fake Lobby --- */
+TOOLFN.fakelobby=box=>{
+ box.innerHTML=`<input class="inp" id="ln" placeholder="Nickname..."><select id="lr"><option>Mythic</option><option>Legend</option><option>Epic</option><option>Grandmaster</option></select><button class="tbtn" id="lg">Generate</button><div class="qrbox"><canvas id="lc" width="600" height="350" style="max-width:100%;border-radius:12px"></canvas></div><br><button class="tbtn ghost" id="ld">Download</button>`;
+ function draw(){
+  const c=$('lc'),x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,600,350);g.addColorStop(0,'#0f0f1a');g.addColorStop(1,'#1e1b4b');
+  x.fillStyle=g;x.fillRect(0,0,600,350);
+  x.fillStyle='#fbbf24';x.beginPath();x.arc(300,110,55,0,7);x.fill();
+  x.fillStyle='#000';x.font='bold 40px Arial';x.textAlign='center';x.fillText(($('ln').value||'P')[0].toUpperCase(),300,125);
+  x.fillStyle='#fff';x.font='bold 26px Arial';x.fillText($('ln').value||'Player1',300,200);
+  x.fillStyle='#a78bfa';x.font='bold 20px Arial';x.fillText($('lr').value,300,235);
+  x.fillStyle='#52525b';x.font='14px Arial';x.fillText('Lobby palsu • Tools Raka',300,310);
+ }
+ $('lg').onclick=draw;$('ln').oninput=draw;draw();
+ $('ld').onclick=()=>{const a=document.createElement('a');a.download='lobby.png';a.href=$('lc').toDataURL();a.click();};
+};
+/* --- Windows Quotes --- */
+const WINQ=["Hidup itu kayak Windows: kadang not responding.","Cinta itu kayak WiFi: kadang nyambung kadang enggak.","Error 404: Motivasi not found.","Jangan lupa save sebelum nyesel.","Otak loading... mohon tunggu.","Reboot hidupmu, mulai dari awal.","Virus terbesar adalah rasa malas."];
+TOOLFN.winquote=box=>{
+ box.innerHTML=`<button class="tbtn" id="wqg">Quote Baru</button><div class="qrbox"><canvas id="wqc" width="500" height="200" style="max-width:100%;border-radius:8px"></canvas></div><br><button class="tbtn ghost" id="wqd">Download</button>`;
+ function draw(){
+  const c=$('wqc'),x=c.getContext('2d');
+  x.fillStyle='#e8e8e8';x.fillRect(0,0,500,200);
+  x.fillStyle='#000080';x.fillRect(0,0,500,36);
+  x.fillStyle='#fff';x.font='bold 16px Arial';x.textAlign='left';x.fillText('⚠ Quote of the Day',10,24);
+  x.fillStyle='#000';x.font='16px Arial';
+  const q=WINQ[Math.floor(Math.random()*WINQ.length)];
+  const words=q.split(' ');let line='',y=90;
+  words.forEach(w=>{if(x.measureText(line+' '+w).width>440){x.fillText(line,20,y);y+=26;line=w;}else line+=' '+w;});
+  x.fillText(line,20,y);
+  x.fillStyle='#c0c0c0';x.fillRect(200,155,100,32);
+  x.fillStyle='#000';x.textAlign='center';x.fillText('OK',250,177);
+ }
+ $('wqg').onclick=draw;draw();
+ $('wqd').onclick=()=>{const a=document.createElement('a');a.download='winquote.png';a.href=$('wqc').toDataURL();a.click();};
+};
+
+/* --- TikTok Downloader --- */
+TOOLFN.ttdl=box=>{
+ box.innerHTML=`<input class="inp" id="tti" placeholder="Tempel link TikTok di sini...">`
+ +`<button class="tbtn" id="ttg">Ambil Video</button><div class="qrbox" id="tto" style="display:none"></div>`;
+ const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ $('ttg').onclick=async()=>{
+  const u=$('tti').value.trim(),o=$('tto');
+  if(!/tiktok\.com\//i.test(u)){o.style.display='block';o.innerHTML='<p style="color:#f87171">Itu bukan link TikTok, Tuan. Tempel link video TikTok ya.</p>';return;}
+  o.style.display='block';o.innerHTML='<p style="color:var(--mut)">Lagi ngambil videonya...</p>';
+  try{
+   const r=await fetch('/api/tiktok?url='+encodeURIComponent(u));
+   const j=await r.json();
+   if(!j.ok){o.innerHTML='<p style="color:#f87171">'+esc(j.error||'Gagal.')+'</p>';return;}
+   const mins=Math.floor((j.duration||0)/60),secs=(j.duration||0)%60;
+   o.innerHTML=(j.cover?`<img src="${j.cover}" style="max-width:100%;border-radius:12px">`:'')
+    +`<p style="margin:8px 0"><b>${esc(j.title)}</b><br><span style="color:var(--mut)">${esc(j.author)}${j.duration?' • '+mins+':'+String(secs).padStart(2,'0'):''}</span></p>`
+    +`<a href="${j.base}&go=1" target="_blank" rel="noopener"><button class="tbtn">⬇ Download Tanpa Watermark</button></a> `
+    +`<a href="${j.base}&go=3" target="_blank" rel="noopener"><button class="tbtn ghost">🎵 Download Audio</button></a><br><br>`
+    +`<a href="${j.base}&go=2" target="_blank" rel="noopener" style="color:var(--mut);font-size:13px">atau versi watermark</a>`;
+  }catch(e){o.innerHTML='<p style="color:#f87171">Koneksi lagi bermasalah. Coba lagi ya.</p>';}
+ };
+};
+
+/* --- Info Video YouTube --- */
+TOOLFN.ytinfo=box=>{
+ box.innerHTML=`<input class="inp" id="yti" placeholder="Tempel link YouTube di sini...">`
+ +`<button class="tbtn" id="ytg">Lihat Info</button><div class="qrbox" id="yto" style="display:none"></div>`
+ +`<p style="color:var(--mut);font-size:13px;margin-top:8px">Jujur ya: download video YouTube gratis diblokir YouTube-nya sendiri, jadi tool ini kasih info videonya + tombol buka di aplikasi YouTube.</p>`;
+ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ $('ytg').onclick=async()=>{
+  const u=$('yti').value.trim(),o=$('yto');
+  if(!/youtu(\.be|be\.com)\//i.test(u)){o.style.display='block';o.innerHTML='<p style="color:#f87171">Itu bukan link YouTube, Tuan.</p>';return;}
+  o.style.display='block';o.innerHTML='<p style="color:var(--mut)">Lagi ngambil infonya...</p>';
+  try{
+   const r=await fetch('/api/ytinfo?url='+encodeURIComponent(u));
+   const j=await r.json();
+   if(!j.ok){o.innerHTML='<p style="color:#f87171">'+esc(j.error||'Gagal.')+'</p>';return;}
+   o.innerHTML=(j.thumbnail?`<img src="${j.thumbnail}" style="max-width:100%;border-radius:12px">`:'')
+    +`<p style="margin:8px 0"><b>${esc(j.title)}</b><br><span style="color:var(--mut)">${esc(j.author)}</span></p>`
+    +`<a href="${esc(j.url)}" target="_blank" rel="noopener"><button class="tbtn">▶ Buka di YouTube</button></a>`;
+  }catch(e){o.innerHTML='<p style="color:#f87171">Koneksi lagi bermasalah. Coba lagi ya.</p>';}
+ };
+};

@@ -1,0 +1,60 @@
+FRONTEND DOWNLOADER — Tools Raka Web
+================================================
+Tempel 2 entri ini ke array TOOLS di index.html (dekat entri lain, kategori "dl"
+sudah ada di filter CATS):
+
+{n:"TikTok Downloader",d:"Download video TikTok tanpa watermark, gratis",c:"dl",icon:"🎵",bg:"linear-gradient(135deg,#25F4EE,#FE2C55)",fn:"ttdl",tags:["DOWNLOADER","GRATIS"]},
+{n:"Info Video YouTube",d:"Lihat info video + buka di aplikasi YouTube",c:"dl",icon:"▶️",bg:"linear-gradient(135deg,#ef4444,#991b1b)",fn:"ytinfo",tags:["DOWNLOADER","GRATIS"]},
+
+Lalu tempel 2 fungsi ini di sebelah TOOLFN lain (pola sama: TOOLFN.<fn>=box=>{...},
+pakai class .inp .tbtn .tout .qrbox yang sudah ada):
+
+/* --- TikTok Downloader --- */
+TOOLFN.ttdl=box=>{
+ box.innerHTML=`<input class="inp" id="tti" placeholder="Tempel link TikTok di sini...">`
+ +`<button class="tbtn" id="ttg">Ambil Video</button><div class="qrbox" id="tto" style="display:none"></div>`;
+ const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ $('ttg').onclick=async()=>{
+  const u=$('tti').value.trim(),o=$('tto');
+  if(!/tiktok\.com\//i.test(u)){o.style.display='block';o.innerHTML='<p style="color:#f87171">Itu bukan link TikTok, Tuan. Tempel link video TikTok ya.</p>';return;}
+  o.style.display='block';o.innerHTML='<p style="color:var(--mut)">Lagi ngambil videonya...</p>';
+  try{
+   const r=await fetch('/api/tiktok?url='+encodeURIComponent(u));
+   const j=await r.json();
+   if(!j.ok){o.innerHTML='<p style="color:#f87171">'+esc(j.error||'Gagal.')+'</p>';return;}
+   const mins=Math.floor((j.duration||0)/60),secs=(j.duration||0)%60;
+   o.innerHTML=(j.cover?`<img src="${j.cover}" style="max-width:100%;border-radius:12px">`:'')
+    +`<p style="margin:8px 0"><b>${esc(j.title)}</b><br><span style="color:var(--mut)">${esc(j.author)}${j.duration?' • '+mins+':'+String(secs).padStart(2,'0'):''}</span></p>`
+    +`<a href="${j.base}&go=1" target="_blank" rel="noopener"><button class="tbtn">⬇ Download Tanpa Watermark</button></a> `
+    +`<a href="${j.base}&go=3" target="_blank" rel="noopener"><button class="tbtn ghost">🎵 Download Audio</button></a><br><br>`
+    +`<a href="${j.base}&go=2" target="_blank" rel="noopener" style="color:var(--mut);font-size:13px">atau versi watermark</a>`;
+  }catch(e){o.innerHTML='<p style="color:#f87171">Koneksi lagi bermasalah. Coba lagi ya.</p>';}
+ };
+};
+
+/* --- Info Video YouTube --- */
+TOOLFN.ytinfo=box=>{
+ box.innerHTML=`<input class="inp" id="yti" placeholder="Tempel link YouTube di sini...">`
+ +`<button class="tbtn" id="ytg">Lihat Info</button><div class="qrbox" id="yto" style="display:none"></div>`
+ +`<p style="color:var(--mut);font-size:13px;margin-top:8px">Jujur ya: download video YouTube gratis diblokir YouTube-nya sendiri, jadi tool ini kasih info videonya + tombol buka di aplikasi YouTube.</p>`;
+ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ $('ytg').onclick=async()=>{
+  const u=$('yti').value.trim(),o=$('yto');
+  if(!/youtu(\.be|be\.com)\//i.test(u)){o.style.display='block';o.innerHTML='<p style="color:#f87171">Itu bukan link YouTube, Tuan.</p>';return;}
+  o.style.display='block';o.innerHTML='<p style="color:var(--mut)">Lagi ngambil infonya...</p>';
+  try{
+   const r=await fetch('/api/ytinfo?url='+encodeURIComponent(u));
+   const j=await r.json();
+   if(!j.ok){o.innerHTML='<p style="color:#f87171">'+esc(j.error||'Gagal.')+'</p>';return;}
+   o.innerHTML=(j.thumbnail?`<img src="${j.thumbnail}" style="max-width:100%;border-radius:12px">`:'')
+    +`<p style="margin:8px 0"><b>${esc(j.title)}</b><br><span style="color:var(--mut)">${esc(j.author)}</span></p>`
+    +`<a href="${esc(j.url)}" target="_blank" rel="noopener"><button class="tbtn">▶ Buka di YouTube</button></a>`;
+  }catch(e){o.innerHTML='<p style="color:#f87171">Koneksi lagi bermasalah. Coba lagi ya.</p>';}
+ };
+};
+
+CATATAN:
+- API routes: /home/hatch/workspace/toolsraka-web/api/tiktok.js dan api/ytinfo.js (sudah ditulis, tinggal ikut ke-deploy).
+- IG downloader SENGAJA belum dibikin — butuh tes server-side dulu ("jangan sampai ada bug", perintah Tuan 19 Okt).
+- Deploy: publish seperti biasa (standing instruction Tuan: website di-publish langsung tanpa tanya dulu).
+- Setelah deploy, tes 1 link TikTok asli + 1 link YouTube asli sebelum bilang "jadi" ke Tuan.
